@@ -256,6 +256,13 @@ export function ScheduleTable({ currentMemberId, currentEmail, onLogout, schedul
   const currentMember = members.find((m) => m.id === currentMemberId)
   const monthLabel = format(currentMonthDate, "MMMM yyyy", { locale: ptBR })
 
+  // Ordena membros: usuário atual primeiro, restante em ordem alfabética
+  const sortedMembers = [...members].sort((a, b) => {
+    if (a.id === currentMemberId) return -1
+    if (b.id === currentMemberId) return 1
+    return a.name.localeCompare(b.name, "pt-BR")
+  })
+
   const getGroupedDays = () => {
     if (scheduleType !== 'louvor') return scheduleDays.map(d => [d])
     
@@ -390,7 +397,7 @@ export function ScheduleTable({ currentMemberId, currentEmail, onLogout, schedul
               </tr>
             </thead>
             <tbody>
-              {members.map((member) => {
+              {sortedMembers.map((member) => {
                 const isCurrentUser = member.id === currentMemberId
                 return (
                   <tr
