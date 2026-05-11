@@ -20,8 +20,8 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  ChevronLeft, ChevronRight, Home, X, Check, HelpCircle,
-  Minus, Download, Calendar, CalendarDays, UserRound,
+  ChevronLeft, ChevronRight, X, Check, HelpCircle,
+  Minus, Download, Calendar, CalendarDays,
 } from "lucide-react"
 
 // API e Tipagens
@@ -104,7 +104,13 @@ function MemberPickerDialog({ open, onClose, members, role, dates, onSelect, onR
             return (
               <button key={member.id} onClick={() => onSelect(member)} className={`flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm transition-colors ${isSelected ? "bg-primary/10 ring-1 ring-primary/30" : "hover:bg-accent/50"}`}>
                 <span className={`inline-flex items-center justify-center h-7 w-7 rounded-full shrink-0 ${style?.bg ?? "bg-muted"} ${style?.text ?? ""}`}>{style?.icon ?? <Minus className="h-3 w-3" />}</span>
-                <div className="flex flex-col items-start text-left min-w-0"><span className={`font-medium truncate w-full ${isSelected ? "text-primary" : "text-foreground"}`}>{member.name}</span><span className="text-[10px] text-muted-foreground">{style?.label ?? "Sem resposta"}</span></div>
+                <div className="flex flex-col items-start text-left min-w-0">
+                  <span className={`font-medium truncate w-full ${isSelected ? "text-primary" : "text-foreground"}`}>{member.name}</span>
+                  <span className="text-[10px] text-muted-foreground">{style?.label ?? "Sem resposta"}</span>
+                  {member.thursdayWarning && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400">({member.thursdayWarning})</span>
+                  )}
+                </div>
                 {isSelected && <Check className="ml-auto h-4 w-4 text-primary shrink-0" />}
               </button>
             )
@@ -357,20 +363,27 @@ export function ScheduleBuilder({ scheduleType, onBack, showMergedCells = false 
                         }
                         // Para apoio mesclado: usar só a data do domingo
                         const effectiveDates = isSoundApoio && col.sunday ? [format(col.sunday, "yyyy-MM-dd")] : dates
-                        const assignment = builtEntries.find(e => e.schedule_date === effectiveDates[0] && e.role === role.key)
+                        // Para células mescladas de louvor: usar data do domingo para status, mas passar quinta para o warning
+                        const isMergedLouvor = scheduleType === "louvor" && col.isMerged && col.sunday && col.thursday
+                        const sundayDateStr = col.sunday ? format(col.sunday, "yyyy-MM-dd") : effectiveDates[0]
+                        const thursdayDateStr = col.thursday ? format(col.thursday, "yyyy-MM-dd") : undefined
+                        const cacheKey = isMergedLouvor ? `merged-${sundayDateStr}` : effectiveDates[0]
+                        const assignment = builtEntries.find(e => e.schedule_date === (isMergedLouvor ? sundayDateStr : effectiveDates[0]) && e.role === role.key)
                         return (
                           <td key={col.colKey} className="px-2 py-2 text-center min-w-[120px]">
                             <TooltipProvider delayDuration={300}><Tooltip><TooltipTrigger asChild>
                                   <button onClick={async () => {
-                                      if (!membersCache[effectiveDates[0]]) {
+                                      if (!membersCache[cacheKey]) {
                                         const { getMembersWithAvailability } = await import("@/lib/schedule-builder-api")
-                                        const list = await getMembersWithAvailability(scheduleType, effectiveDates[0]); setMembersCache(p => ({ ...p, [effectiveDates[0]]: list }))
+                                        // Para louvor mesclado, passar data de quinta para obter warning
+                                        const list = await getMembersWithAvailability(scheduleType, sundayDateStr, isMergedLouvor ? thursdayDateStr : undefined)
+                                        setMembersCache(p => ({ ...p, [cacheKey]: list }))
                                       }
-                                      setPickerOpen({ role, dates: effectiveDates })
+                                      setPickerOpen({ role, dates: isMergedLouvor ? [sundayDateStr] : effectiveDates, cacheKey })
                                     }}
                                     className={`w-full rounded-lg border px-2 py-2 text-xs flex items-center justify-center gap-1.5 min-h-[40px] transition-all hover:ring-2 hover:ring-primary/30 active:scale-95 ${assignment ? "bg-primary/5 border-primary/20 text-foreground" : "bg-muted/30 border-dashed border-muted-foreground/20 text-muted-foreground"}`}
                                   >
-                                    {assignment ? (<><UserRound className="h-3 w-3 text-primary" /><span className="font-medium truncate">{assignment.member_name}</span></>) : <span className="text-muted-foreground/50">--</span>}
+                                    {assignment ? (<><span className="text-sm">{role.icon}</span><span className="font-medium truncate">{assignment.member_name}</span></>) : <span className="text-muted-foreground/50">--</span>}
                                   </button>
                                 </TooltipTrigger><TooltipContent><p className="text-xs">{assignment?.member_name || `Escalar ${role.label}`}</p></TooltipContent></Tooltip></TooltipProvider>
                           </td>
@@ -415,7 +428,7 @@ export function ScheduleBuilder({ scheduleType, onBack, showMergedCells = false 
                                   }}
                                   className={`w-full rounded-lg border px-2 py-2 text-xs flex items-center justify-center gap-1.5 min-h-[40px] transition-all hover:ring-2 hover:ring-violet-400/40 active:scale-95 ${assignment ? "bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800 text-foreground" : "bg-muted/30 border-dashed border-muted-foreground/20 text-muted-foreground"}`}
                                 >
-                                  {assignment ? (<><UserRound className="h-3 w-3 text-violet-500" /><span className="font-medium truncate">{assignment.member_name}</span></>) : <span className="text-muted-foreground/50">--</span>}
+                                  {assignment ? (<><span className="text-sm">{role.icon}</span><span className="font-medium truncate">{assignment.member_name}</span></>) : <span className="text-muted-foreground/50">--</span>}
                                 </button>
                               </TooltipTrigger><TooltipContent><p className="text-xs">{assignment?.member_name || `Escalar ${role.label}`}</p></TooltipContent></Tooltip></TooltipProvider>
                         </td>
