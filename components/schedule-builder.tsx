@@ -383,7 +383,7 @@ export function ScheduleBuilder({ scheduleType, onBack, showMergedCells = false 
                                     }}
                                     className={`w-full rounded-lg border px-2 py-2 text-xs flex items-center justify-center gap-1.5 min-h-[40px] transition-all hover:ring-2 hover:ring-primary/30 active:scale-95 ${assignment ? "bg-primary/5 border-primary/20 text-foreground" : "bg-muted/30 border-dashed border-muted-foreground/20 text-muted-foreground"}`}
                                   >
-                                    {assignment ? (<><span className="text-sm">{role.icon}</span><span className="font-medium truncate">{assignment.member_name}</span></>) : <span className="text-muted-foreground/50">--</span>}
+                                    {assignment ? (<><span className="text-sm">{role.icon}</span><span className="font-semibold truncate">{assignment.member_name}</span></>) : <span className="text-muted-foreground/50">--</span>}
                                   </button>
                                 </TooltipTrigger><TooltipContent><p className="text-xs">{assignment?.member_name || `Escalar ${role.label}`}</p></TooltipContent></Tooltip></TooltipProvider>
                           </td>
@@ -428,7 +428,7 @@ export function ScheduleBuilder({ scheduleType, onBack, showMergedCells = false 
                                   }}
                                   className={`w-full rounded-lg border px-2 py-2 text-xs flex items-center justify-center gap-1.5 min-h-[40px] transition-all hover:ring-2 hover:ring-violet-400/40 active:scale-95 ${assignment ? "bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800 text-foreground" : "bg-muted/30 border-dashed border-muted-foreground/20 text-muted-foreground"}`}
                                 >
-                                  {assignment ? (<><span className="text-sm">{role.icon}</span><span className="font-medium truncate">{assignment.member_name}</span></>) : <span className="text-muted-foreground/50">--</span>}
+                                  {assignment ? (<><span className="text-sm">{role.icon}</span><span className="font-semibold truncate">{assignment.member_name}</span></>) : <span className="text-muted-foreground/50">--</span>}
                                 </button>
                               </TooltipTrigger><TooltipContent><p className="text-xs">{assignment?.member_name || `Escalar ${role.label}`}</p></TooltipContent></Tooltip></TooltipProvider>
                         </td>
