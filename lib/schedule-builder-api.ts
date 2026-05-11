@@ -9,6 +9,8 @@ export interface MemberAvailability {
   name: string
   email: string
   status: ScheduleStatus | null
+  thursdayStatus?: ScheduleStatus | null
+  thursdayWarning?: string | null
 }
 
 export interface BuiltScheduleEntry {
@@ -25,7 +27,7 @@ export const BAND_ROLES = [
   { key: 'voz1', label: 'Voz 1', icon: '🎙️' },
   { key: 'voz2', label: 'Voz 2', icon: '🎙️' },
   { key: 'violao', label: 'Violão', icon: '🎸' },
-  { key: 'teclado', label: 'Teclado', icon: '⌨️' },
+  { key: 'teclado', label: 'Teclado', icon: '🎹' },
   { key: 'guitarra', label: 'Guitarra', icon: '🎸' },
   { key: 'baixo', label: 'Baixo', icon: '🎸' },
   { key: 'bateria', label: 'Bateria', icon: '🥁' },
@@ -62,9 +64,11 @@ export function getRolesForScheduleType(scheduleType: string): RoleType[] {
 }
 
 // Get all members with their availability for a specific date
+// For louvor merged cells, also pass thursdayDate to get thursday availability
 export async function getMembersWithAvailability(
   scheduleType: ScheduleType,
-  date: string
+  date: string,
+  thursdayDate?: string
 ): Promise<MemberAvailability[]> {
   const config = SCHEDULE_CONFIG[scheduleType]
   const { data: members, error: membersError } = await supabase
@@ -75,6 +79,7 @@ export async function getMembersWithAvailability(
   if (membersError) throw new Error(membersError.message)
   if (!members || members.length === 0) return []
 
+  // Buscar entries para a data principal (domingo)
   const { data: entries, error: entriesError } = await supabase
     .from(config.entriesTable)
     .select('*')
@@ -82,13 +87,44 @@ export async function getMembersWithAvailability(
 
   if (entriesError) throw new Error(entriesError.message)
 
+  // Se temos data de quinta-feira, buscar entries para ela também
+  let thursdayEntries: { member_id: string; status: ScheduleStatus }[] = []
+  if (thursdayDate) {
+    const { data: thEntries, error: thError } = await supabase
+      .from(config.entriesTable)
+      .select('*')
+      .eq('schedule_date', thursdayDate)
+    
+    if (!thError && thEntries) {
+      thursdayEntries = thEntries
+    }
+  }
+
   return members.map((member) => {
-    const entry = entries?.find((e: { member_id: string }) => e.member_id === member.id)
+    const sundayEntry = entries?.find((e: { member_id: string }) => e.member_id === member.id)
+    const thursdayEntry = thursdayEntries.find((e) => e.member_id === member.id)
+    
+    const sundayStatus = sundayEntry?.status ?? null
+    const thursdayStatus = thursdayEntry?.status ?? null
+    
+    // Lógica: status do domingo prevalece
+    // Se disponível no domingo mas indisponível/não sei na quinta, adicionar warning
+    let thursdayWarning: string | null = null
+    if (sundayStatus === 'disponivel' && thursdayDate) {
+      if (thursdayStatus === 'indisponivel') {
+        thursdayWarning = 'indisponível quinta-feira'
+      } else if (thursdayStatus === 'nao_sei') {
+        thursdayWarning = 'não sabe se pode participar na quinta-feira'
+      }
+    }
+
     return {
       id: member.id,
       name: member.name,
       email: member.email,
-      status: entry?.status ?? null,
+      status: sundayStatus,
+      thursdayStatus: thursdayDate ? thursdayStatus : undefined,
+      thursdayWarning,
     }
   })
 }
