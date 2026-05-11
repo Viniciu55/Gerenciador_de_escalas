@@ -27,7 +27,7 @@ export const BAND_ROLES = [
   { key: 'voz1', label: 'Voz 1', icon: '🎙️' },
   { key: 'voz2', label: 'Voz 2', icon: '🎙️' },
   { key: 'violao', label: 'Violão', icon: '🎸' },
-  { key: 'teclado', label: 'Teclado', icon: '⌨️' },
+  { key: 'teclado', label: 'Teclado', icon: '🎹' },
   { key: 'guitarra', label: 'Guitarra', icon: '🎸' },
   { key: 'baixo', label: 'Baixo', icon: '🎸' },
   { key: 'bateria', label: 'Bateria', icon: '🥁' },
