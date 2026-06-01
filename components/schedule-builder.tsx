@@ -21,7 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   ChevronLeft, ChevronRight, X, Check, HelpCircle,
-  Minus, Download, Calendar, CalendarDays,
+  Minus, Download, Calendar, CalendarDays, Plus,
 } from "lucide-react"
 
 // API e Tipagens
@@ -83,16 +83,60 @@ function getScheduleDays(monthDate: Date, sundaysOnly: boolean, viewMode: "month
 }
 
 function MemberPickerDialog({ open, onClose, members, role, dates, onSelect, onRemove, currentMemberEmail }: any) {
+  const [showManualInput, setShowManualInput] = useState(false)
+  const [manualName, setManualName] = useState("")
   const sorted = [...members].sort((a, b) => {
     const order: any = { disponivel: 0, nao_sei: 1, indisponivel: 2 }
     return (order[a.status] ?? 3) - (order[b.status] ?? 3)
   })
   const dateLabel = dates.map((d: string) => format(new Date(d + "T12:00:00"), "dd/MM")).join(" e ")
+  
+  const handleManualSubmit = () => {
+    if (manualName.trim()) {
+      onSelect({ id: `manual-${Date.now()}`, name: manualName.trim(), email: null, isManual: true })
+      setManualName("")
+      setShowManualInput(false)
+    }
+  }
+
+  const handleClose = (isOpen: boolean) => {
+    if (!isOpen) {
+      setShowManualInput(false)
+      setManualName("")
+    }
+    onClose(isOpen)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-sm max-h-[80vh] flex flex-col p-6">
         <DialogHeader><DialogTitle className="flex items-center gap-2 text-base font-bold text-foreground"><span className="text-xl">{role.icon}</span><span>{role.label} - {dateLabel}</span></DialogTitle></DialogHeader>
         <div className="flex-1 overflow-y-auto -mx-2 px-2 space-y-1 mt-4">
+          {/* Adicionar nome manualmente */}
+          {showManualInput ? (
+            <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-accent/30 border border-border">
+              <input
+                type="text"
+                value={manualName}
+                onChange={(e) => setManualName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleManualSubmit()}
+                placeholder="Digite o nome..."
+                autoFocus
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+              <button onClick={handleManualSubmit} disabled={!manualName.trim()} className="p-1.5 rounded-md bg-primary text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed">
+                <Check className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => { setShowManualInput(false); setManualName("") }} className="p-1.5 rounded-md hover:bg-muted">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setShowManualInput(true)} className="flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-accent/50 text-primary mb-2 border border-dashed border-primary/30">
+              <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary/10"><Plus className="h-3.5 w-3.5" /></span>
+              <span className="font-medium">Adicionar nome manualmente</span>
+            </button>
+          )}
           {currentMemberEmail && (
             <button onClick={onRemove} className="flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-destructive/10 text-destructive mb-2">
               <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-destructive/10"><Minus className="h-3.5 w-3.5" /></span><span className="font-medium">Remover membro</span>
