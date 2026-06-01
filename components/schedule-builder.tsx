@@ -82,7 +82,7 @@ function getScheduleDays(monthDate: Date, sundaysOnly: boolean, viewMode: "month
   return filteredDays
 }
 
-function MemberPickerDialog({ open, onClose, members, role, dates, onSelect, onRemove, currentMemberEmail }: any) {
+function MemberPickerDialog({ open, onClose, members, role, dates, onSelect, onRemove, currentMemberEmail, hasAssignment }: any) {
   const [showManualInput, setShowManualInput] = useState(false)
   const [manualName, setManualName] = useState("")
   const sorted = [...members].sort((a, b) => {
@@ -137,7 +137,7 @@ function MemberPickerDialog({ open, onClose, members, role, dates, onSelect, onR
               <span className="font-medium">Adicionar nome manualmente</span>
             </button>
           )}
-          {currentMemberEmail && (
+          {hasAssignment && (
             <button onClick={onRemove} className="flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-destructive/10 text-destructive mb-2">
               <span className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-destructive/10"><Minus className="h-3.5 w-3.5" /></span><span className="font-medium">Remover membro</span>
             </button>
@@ -526,6 +526,7 @@ export function ScheduleBuilder({ scheduleType, onBack, showMergedCells = false 
             await Promise.all(pickerOpen.dates.map(d => removeBuiltScheduleEntry(targetType as ScheduleType, d, pickerOpen.role.key)))
           }}
           currentMemberEmail={builtEntries.find(e => e.schedule_date === pickerOpen.dates[0] && e.role === pickerOpen.role.key)?.member_email}
+          hasAssignment={!!builtEntries.find(e => e.schedule_date === pickerOpen.dates[0] && e.role === pickerOpen.role.key)}
         />
       )}
     </div>
