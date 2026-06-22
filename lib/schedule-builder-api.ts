@@ -104,8 +104,9 @@ export async function getMembersWithAvailability(
     const sundayEntry = entries?.find((e: { member_id: string }) => e.member_id === member.id)
     const thursdayEntry = thursdayEntries.find((e) => e.member_id === member.id)
     
-    const sundayStatus = sundayEntry?.status ?? null
-    const thursdayStatus = thursdayEntry?.status ?? null
+    // Por padrão, todos estão "disponível" caso não haja resposta registrada
+    const sundayStatus = sundayEntry?.status ?? 'disponivel'
+    const thursdayStatus = thursdayEntry?.status ?? 'disponivel'
     
     // Lógica: status do domingo prevalece
     // Se disponível no domingo mas indisponível/não sei na quinta, adicionar warning
