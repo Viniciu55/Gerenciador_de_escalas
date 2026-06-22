@@ -199,11 +199,12 @@ export function ScheduleTable({ currentMemberId, currentEmail, onLogout, schedul
     loadData()
   }, [loadData])
 
-  function getEntryStatus(memberId: string, date: string): ScheduleStatus | null {
+  function getEntryStatus(memberId: string, date: string): ScheduleStatus {
     const entry = entries.find(
       (e) => e.member_id === memberId && e.schedule_date === date
     )
-    return entry?.status ?? null
+    // Por padrão, todos estão "disponível" caso não haja resposta registrada
+    return entry?.status ?? "disponivel"
   }
 
   async function handleStatusSelect(memberId: string, date: string, newStatus: ScheduleStatus) {
