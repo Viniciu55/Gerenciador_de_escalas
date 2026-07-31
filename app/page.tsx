@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Music, AudioLines, Laptop, ChevronRight } from "lucide-react"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { GlobalHeader } from "@/components/global-header"
 
 const SCHEDULES = [
   {
@@ -29,21 +29,9 @@ const SCHEDULES = [
 export default function Home() {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      {/* Global Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <img 
-              src="/logo.jpg" 
-              alt="Logo" 
-              className="h-10 w-10 rounded-full object-cover"
-            />
-            <span className="text-lg font-bold text-foreground">Reviver</span>
-          </div>
-          <ThemeToggle />
-        </div>
-      </header>
-      
+      {/* Sem atalho de início: esta já é a página inicial. */}
+      <GlobalHeader showHomeLink={false} />
+
       {/* Main Content */}
       <div className="flex flex-1 items-center justify-center p-4">
         <div className="w-full max-w-md">

@@ -9,12 +9,19 @@ import type { ScheduleType } from "@/lib/types"
 import { SCHEDULE_CONFIG } from "@/lib/types"
 
 interface RegisterFormProps {
+  /** E-mail já validado na etapa anterior. Exibido, mas não editável. */
   email: string
+  /** Chamado com o id do membro recém-criado. */
   onRegistered: (memberId: string) => void
+  /** Volta para a tela de e-mail. */
   onBack: () => void
   scheduleType: ScheduleType
 }
 
+/**
+ * Cadastro exibido quando o e-mail informado ainda não pertence à escala. Só
+ * pede o nome, já que o e-mail vem da etapa anterior.
+ */
 export function RegisterForm({ email, onRegistered, onBack, scheduleType }: RegisterFormProps) {
   const [name, setName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -42,8 +49,6 @@ export function RegisterForm({ email, onRegistered, onBack, scheduleType }: Regi
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-background p-4">
-      <div className="absolute top-4 right-4 flex items-center gap-1">
-      </div>
       <div className="w-full max-w-sm">
         <button
           onClick={onBack}

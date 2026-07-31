@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, LogOut, Check, X, HelpCircle, AlertTriangle} from "lucide-react"
 import { format, addMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from "date-fns"
@@ -10,7 +10,9 @@ import { SCHEDULE_CONFIG } from "@/lib/types"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface ScheduleTableProps {
+  /** Membro autenticado. Só as células dele são editáveis. */
   currentMemberId: string
+  /** E-mail do membro, usado para detectar conflitos entre escalas. */
   currentEmail: string
   onLogout: () => void
   scheduleType: ScheduleType
@@ -36,39 +38,43 @@ const STATUS_CONFIG: Record<ScheduleStatus, { label: string; className: string; 
 
 const STATUS_OPTIONS: ScheduleStatus[] = ["disponivel", "indisponivel", "nao_sei"]
 
+/** Dia da semana das quintas (ensaio) conforme `getDay` do date-fns. */
+const THURSDAY = 4
+/** Dia da semana dos domingos (culto) conforme `getDay` do date-fns. */
+const SUNDAY = 0
+
+/** Evento realizado em cada dia de escala. */
 const EVENT_LABELS: Record<number, string> = {
-  4: "Ensaio",
-  0: "Culto",
+  [THURSDAY]: "Ensaio",
+  [SUNDAY]: "Culto",
 }
 
 const WEEKDAY_LABELS: Record<number, string> = {
-  4: "quinta",
-  0: "domingo",
+  [THURSDAY]: "quinta",
+  [SUNDAY]: "domingo",
 }
 
 // --- LÓGICA DE DATAS ---
+
+/**
+ * Dias de escala dentro do mês: quintas (ensaio) e domingos (culto), ou apenas
+ * domingos quando `sundaysOnly` está ligado (caso da mídia).
+ *
+ * Diferente do builder, esta tabela **não** pareia meses: ela mostra apenas os
+ * dias que caem dentro do mês exibido, sem puxar a quinta do mês anterior nem o
+ * domingo do mês seguinte. Isso é intencional — aqui cada dia é respondido de
+ * forma independente, então não existe o par ensaio/culto a preservar.
+ */
 function getMonthScheduleDays(monthDate: Date, sundaysOnly: boolean): Date[] {
-  const start = startOfMonth(monthDate)
-  const end = endOfMonth(monthDate)
-  let allDays = eachDayOfInterval({ start, end })
-  
-  
-  // Filtra apenas os dias de interesse dentro do mês atual (Quintas e Domingos)
-  let filteredDays = allDays.filter((day) => {
-    const dow = getDay(day)
-    return sundaysOnly ? dow === 0 : (dow === 4 || dow === 0)
+  const allDays = eachDayOfInterval({
+    start: startOfMonth(monthDate),
+    end: endOfMonth(monthDate),
   })
-  /*
-  // Se o mês começar em um Domingo (0), busca a Quinta (4) do mês anterior
-  if (!sundaysOnly && filteredDays.length > 0) {
-    if (getDay(filteredDays[0]) === 0) {
-      const prevThursday = new Date(filteredDays[0])
-      prevThursday.setDate(prevThursday.getDate() - 3)
-      filteredDays = [prevThursday, ...filteredDays]
-    }
-  }*/
-  
-  return filteredDays
+
+  return allDays.filter((day) => {
+    const dayOfWeek = getDay(day)
+    return sundaysOnly ? dayOfWeek === SUNDAY : dayOfWeek === THURSDAY || dayOfWeek === SUNDAY
+  })
 }
 
 function StatusBadge({ status }: { status: ScheduleStatus | null }) {
@@ -161,6 +167,12 @@ function ConflictWarning({ conflicts, date }: { conflicts: ConflictInfo[]; date:
   )
 }
 
+/**
+ * Grade de disponibilidade do mês: membros nas linhas, dias de escala nas
+ * colunas. Todos veem a grade inteira, mas cada pessoa edita apenas a própria
+ * linha. As alterações são aplicadas otimisticamente e revertidas via recarga
+ * se a gravação falhar.
+ */
 export function ScheduleTable({ currentMemberId, currentEmail, onLogout, scheduleType }: ScheduleTableProps) {
   const [monthOffset, setMonthOffset] = useState(0)
   const [members, setMembers] = useState<Member[]>([])
@@ -171,10 +183,22 @@ export function ScheduleTable({ currentMemberId, currentEmail, onLogout, schedul
   const [openPicker, setOpenPicker] = useState<string | null>(null)
 
   const config = SCHEDULE_CONFIG[scheduleType]
-  const currentMonthDate = addMonths(new Date(), monthOffset)
-  const scheduleDays = getMonthScheduleDays(currentMonthDate, config.sundaysOnly)
-  const monthStart = format(startOfMonth(currentMonthDate), "yyyy-MM-dd")
-  const monthEnd = format(endOfMonth(currentMonthDate), "yyyy-MM-dd")
+
+  // Memoizado porque `monthStart`/`monthEnd` são dependências de `loadData`:
+  // recalculá-los a cada render recriaria o callback e disparia recargas.
+  const currentMonthDate = useMemo(() => addMonths(new Date(), monthOffset), [monthOffset])
+  const scheduleDays = useMemo(
+    () => getMonthScheduleDays(currentMonthDate, config.sundaysOnly),
+    [currentMonthDate, config.sundaysOnly]
+  )
+  const monthStart = useMemo(
+    () => format(startOfMonth(currentMonthDate), "yyyy-MM-dd"),
+    [currentMonthDate]
+  )
+  const monthEnd = useMemo(
+    () => format(endOfMonth(currentMonthDate), "yyyy-MM-dd"),
+    [currentMonthDate]
+  )
 
   const loadData = useCallback(async () => {
     setIsLoading(true)
@@ -199,11 +223,15 @@ export function ScheduleTable({ currentMemberId, currentEmail, onLogout, schedul
     loadData()
   }, [loadData])
 
+  /**
+   * Status do membro na data. A ausência de registro significa `"disponivel"`,
+   * e não um estado indefinido — só é gravada linha para quem respondeu algo
+   * diferente do padrão (ver {@link ScheduleStatus}).
+   */
   function getEntryStatus(memberId: string, date: string): ScheduleStatus {
     const entry = entries.find(
       (e) => e.member_id === memberId && e.schedule_date === date
     )
-    // Por padrão, todos estão "disponível" caso não haja resposta registrada
     return entry?.status ?? "disponivel"
   }
 
@@ -257,30 +285,16 @@ export function ScheduleTable({ currentMemberId, currentEmail, onLogout, schedul
   const currentMember = members.find((m) => m.id === currentMemberId)
   const monthLabel = format(currentMonthDate, "MMMM yyyy", { locale: ptBR })
 
-  // Ordena membros: usuário atual primeiro, restante em ordem alfabética
-  const sortedMembers = [...members].sort((a, b) => {
-    if (a.id === currentMemberId) return -1
-    if (b.id === currentMemberId) return 1
-    return a.name.localeCompare(b.name, "pt-BR")
-  })
-
-  const getGroupedDays = () => {
-    if (scheduleType !== 'louvor') return scheduleDays.map(d => [d])
-    
-    const groups: Date[][] = []
-    for (let i = 0; i < scheduleDays.length; i += 2) {
-      const thursday = scheduleDays[i]
-      const sunday = scheduleDays[i + 1]
-      if (sunday && getDay(thursday) === 4 && getDay(sunday) === 0) {
-        groups.push([thursday, sunday])
-      } else if (thursday) {
-        groups.push([thursday])
-      }
-    }
-    return groups
-  }
-
-  const groupedDays = getGroupedDays()
+  /** Usuário atual primeiro, restante em ordem alfabética. */
+  const sortedMembers = useMemo(
+    () =>
+      [...members].sort((a, b) => {
+        if (a.id === currentMemberId) return -1
+        if (b.id === currentMemberId) return 1
+        return a.name.localeCompare(b.name, "pt-BR")
+      }),
+    [members, currentMemberId]
+  )
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">

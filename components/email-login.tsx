@@ -9,37 +9,58 @@ import type { ScheduleType } from "@/lib/types"
 import { SCHEDULE_CONFIG } from "@/lib/types"
 
 interface EmailLoginProps {
+  /** Chamado quando o e-mail já está cadastrado nesta escala. */
   onMemberFound: (memberId: string, email: string) => void
+  /** Chamado quando o e-mail não existe, para seguir para o cadastro. */
   onMemberNotFound: (email: string) => void
+  /** Carregamento controlado pelo pai, durante a transição após a busca. */
   isLoading: boolean
   scheduleType: ScheduleType
 }
 
+/**
+ * Tela de entrada da escala: identifica a pessoa pelo e-mail e encaminha para a
+ * escala ou para o cadastro.
+ */
 export function EmailLogin({ onMemberFound, onMemberNotFound, isLoading, scheduleType }: EmailLoginProps) {
   const [email, setEmail] = useState("")
+  const [error, setError] = useState("")
+  // O `isLoading` do pai só liga depois que a busca termina, então o estado do
+  // próprio envio é controlado aqui para o botão refletir a espera.
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const config = SCHEDULE_CONFIG[scheduleType]
 
-  function handleSubmit(e: React.FormEvent) {
+  const isBusy = isSubmitting || isLoading
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim()) return
 
-    const lookupEmail = email.toLowerCase().trim()
+    setIsSubmitting(true)
+    setError("")
 
-    import("@/lib/schedule-api").then(({ lookupMember }) => {
-      lookupMember(lookupEmail, scheduleType).then((member) => {
-        if (member) {
-          onMemberFound(member.id, member.email)
-        } else {
-          onMemberNotFound(lookupEmail)
-        }
-      })
-    })
+    try {
+      const lookupEmail = email.toLowerCase().trim()
+      const { lookupMember } = await import("@/lib/schedule-api")
+      const member = await lookupMember(lookupEmail, scheduleType)
+
+      if (member) {
+        onMemberFound(member.id, member.email)
+      } else {
+        onMemberNotFound(lookupEmail)
+      }
+      // Em caso de sucesso o componente é desmontado pelo pai, então o estado de
+      // envio segue ligado de propósito para o botão não voltar a piscar.
+    } catch (err) {
+      // Sem este tratamento uma falha de rede deixava a tela parada, sem retorno.
+      setError("Erro ao verificar o e-mail. Tente novamente.")
+      console.error(err)
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-background p-4">
-      <div className="absolute top-4 right-4 flex items-center gap-1">
-      </div>
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
@@ -69,9 +90,11 @@ export function EmailLogin({ onMemberFound, onMemberNotFound, isLoading, schedul
               className="h-12 text-base"
             />
           </div>
-          <Button type="submit" className="h-12 text-base" disabled={isLoading || !email.trim()}>
-            {isLoading ? "Verificando..." : "Continuar"}
-            {!isLoading && <ArrowRight className="ml-2 h-4 w-4" />}
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
+          <Button type="submit" className="h-12 text-base" disabled={isBusy || !email.trim()}>
+            {isBusy ? "Verificando..." : "Continuar"}
+            {!isBusy && <ArrowRight className="ml-2 h-4 w-4" />}
           </Button>
         </form>
       </div>
