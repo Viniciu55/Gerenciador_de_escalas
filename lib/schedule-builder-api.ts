@@ -78,17 +78,22 @@ export type AnyRole = BandRole | SoundRole | MediaRole
 
 export type RoleType = typeof BAND_ROLES[number] | typeof SOUND_ROLES[number] | typeof MEDIA_ROLES[number]
 
-/** Funções que compõem a escala informada. O louvor é o padrão de segurança. */
-export function getRolesForScheduleType(scheduleType: string): RoleType[] {
+/**
+ * Funções que compõem a escala informada. O louvor é o padrão de segurança.
+ *
+ * O retorno é `readonly` porque as listas de funções são constantes `as const`:
+ * expor como array mutável exigiria uma conversão insegura.
+ */
+export function getRolesForScheduleType(scheduleType: string): readonly RoleType[] {
   switch (scheduleType) {
     case 'louvor':
-      return BAND_ROLES as RoleType[]
+      return BAND_ROLES
     case 'sonoplastia':
-      return SOUND_ROLES as RoleType[]
+      return SOUND_ROLES
     case 'midia':
-      return MEDIA_ROLES as RoleType[]
+      return MEDIA_ROLES
     default:
-      return BAND_ROLES as RoleType[]
+      return BAND_ROLES
   }
 }
 
